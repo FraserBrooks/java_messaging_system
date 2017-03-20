@@ -62,8 +62,8 @@ class Client {
     try {
       sender.join();
       toServer.close();
-      receiver.join();
       fromServer.close();
+      receiver.join();
       server.close();
     }
     catch (IOException e) {

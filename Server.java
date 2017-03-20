@@ -41,12 +41,15 @@ public class Server {
         // We add the client to the table:
         clientTable.add(clientName);
         
-        // We create and start a new thread to read from the client:
-        (new ServerReceiver(clientName, fromClient, clientTable)).start();
+        
 
         // We create and start a new thread to write to the client:
         PrintStream toClient = new PrintStream(socket.getOutputStream());
-        (new ServerSender(clientTable.getQueue(clientName), toClient)).start();
+        ServerSender servSend = new ServerSender(clientTable.getQueue(clientName), toClient);
+        servSend.start();
+        
+        // We create and start a new thread to read from the client:
+        (new ServerReceiver(clientName, fromClient, clientTable, servSend)).start();
       }
     } 
     catch (IOException e) {

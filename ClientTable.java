@@ -21,4 +21,8 @@ public class ClientTable {
   public MessageQueue getQueue(String nickname) {
     return queueTable.get(nickname);
   }
+  
+  public void remove (String name){
+	  queueTable.remove(name);
+  }
 }
