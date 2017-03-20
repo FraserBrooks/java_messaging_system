@@ -19,7 +19,7 @@ public class ServerSender extends Thread {
 			Message msg = clientQueue.take(); // Matches EEEEE in ServerReceiver
 			client.println(msg); // Matches FFFFF in ClientReceiver
 		} catch (InterruptedException e) {
-			Report.behaviour("ServerSender of " + client + " has been interrupted.");
+			Report.behaviour("ServerSender has been interrupted.");
 		} 
     }
   }

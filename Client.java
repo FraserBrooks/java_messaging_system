@@ -61,10 +61,12 @@ class Client {
     // Wait for them to end and close sockets.
     try {
       sender.join();
+      Report.behaviour("ClientSender of " + nickname + " ended.");
       toServer.close();
       fromServer.close();
-      receiver.join();
       server.close();
+      receiver.join();
+      Report.behaviour("ClientReceiver of " + nickname + " ended.");
     }
     catch (IOException e) {
       Report.errorAndGiveUp("Something wrong " + e.getMessage());

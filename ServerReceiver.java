@@ -41,7 +41,7 @@ public class ServerReceiver extends Thread {
       // No point in trying to close sockets. Just give up.
       // We end this thread (we don't do System.exit(1)).
     }
-    Report.behaviour("ServerReceiver of " + myClient + " is interrupting ServerSender & ending.");
+    Report.behaviour("ServerReceiver of " + myClientsName + " is interrupting ServerSender & ending.");
     linkedSender.interrupt();
     clientTable.remove(myClientsName);
   }

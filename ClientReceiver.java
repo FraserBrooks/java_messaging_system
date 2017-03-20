@@ -23,6 +23,9 @@ public class ClientReceiver extends Thread {
           Report.errorAndGiveUp("Server seems to have died"); 
       }
     }
+    catch(SocketException e){
+    	Report.behaviour("ClientReceiver Interrupted");
+    }
     catch (IOException e) {
       Report.errorAndGiveUp("Server seems to have died " + e.getMessage());
     }
