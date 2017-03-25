@@ -22,15 +22,15 @@ public class ClientSender extends Thread {
     try {
       // Then loop forever sending messages to recipients via the server:
       while (true) {
-        String recipient = user.readLine();
-        if(recipient.equals("quit")){
-        	server.println(recipient); // Matches CCCCC in ServerReceiver.java
+        String firstMessage  = user.readLine();
+        if(firstMessage.equals("quit")){
+        	server.println("quit"); // Matches CCCCC in ServerReceiver.java
         	Report.behaviour(nickname + " quit");
         	break;
         }
-        String text = user.readLine();
-        server.println(recipient); // Matches CCCCC in ServerReceiver.java
-        server.println(text);      // Matches DDDDD in ServerReceiver.java
+        String secondMessage = user.readLine();
+        server.println(firstMessage); // Matches CCCCC in ServerReceiver.java
+        server.println(secondMessage);      // Matches DDDDD in ServerReceiver.java
 
       }
     }

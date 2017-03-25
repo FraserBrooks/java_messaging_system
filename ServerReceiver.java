@@ -5,19 +5,34 @@ import java.io.*;
 // thread to forward to the appropriate client.
 
 public class ServerReceiver extends Thread {
-  private String myClientsName;
+  private String myClientsName = null;
+  private boolean logged_on = false;
   private BufferedReader myClient;
   private ClientTable clientTable;
+  private PasswordTable passwords;
   private ServerSender linkedSender;
 
-  public ServerReceiver(String n, BufferedReader c, ClientTable t, ServerSender s) {
-    myClientsName = n;
+  public ServerReceiver(BufferedReader c, ClientTable t, PasswordTable p, ServerSender s) {
     myClient = c;
     clientTable = t;
+    passwords = p;
     linkedSender = s;
   }
 
   public void run() {
+	  while(true){
+		  while(!logged_on){
+			  //log on or register
+		  }
+		  while(logged_on){
+			  //message
+		  }
+	  }
+  }
+	  
+	  
+	  
+	/**
     try {
       while (true) {
         String recipient = myClient.readLine(); // Matches CCCCC in ClientSender.java
@@ -45,5 +60,6 @@ public class ServerReceiver extends Thread {
     linkedSender.interrupt();
     clientTable.remove(myClientsName);
   }
+  **/
 }
 

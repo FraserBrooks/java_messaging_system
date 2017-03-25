@@ -14,6 +14,7 @@ public class Server {
 	
     // This table will be shared by the server threads:
     ClientTable clientTable = new ClientTable();
+    PasswordTable passwordTable = new PasswordTable();
     
     ServerSocket serverSocket = null;
     
@@ -30,21 +31,16 @@ public class Server {
         // Listen to the socket, accepting connections from new clients:
         Socket socket = serverSocket.accept(); // Matches AAAAA in Client.java
 	
-        // This is so that we can use readLine():
+        // Create input and output streams
         BufferedReader fromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-        // We ask the client what its name is:
-        String clientName = fromClient.readLine(); // Matches BBBBB in Client.java
-
-        Report.behaviour(clientName + " connected");
-        
-        // We add the client to the table:
-        clientTable.add(clientName);
-        
-        
-
-        // We create and start a new thread to write to the client:
         PrintStream toClient = new PrintStream(socket.getOutputStream());
+
+        Report.behaviour("Someone has connected");
+        
+        (new ServerAuthenticator(fromClient, toClient, clientTable, passwordTable)).start();
+        
+        
+
         ServerSender servSend = new ServerSender(clientTable.getQueue(clientName), toClient);
         servSend.start();
         
