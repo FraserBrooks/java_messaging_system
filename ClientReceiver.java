@@ -15,8 +15,8 @@ public class ClientReceiver extends Thread {
   public void run() {
     // Print to the user whatever we get from the server:
     try {
-      while (true) {
-        String s = server.readLine(); // Matches FFFFF in ServerSender.java
+      while (!Thread.interrupted()) {
+        String s = server.readLine();
         if (s != null)
           System.out.println(s);
         else
@@ -24,10 +24,17 @@ public class ClientReceiver extends Thread {
       }
     }
     catch(SocketException e){
-    	Report.behaviour("ClientReceiver Interrupted");
+    	Report.behaviour("ClientReceiver SocketException");
     }
     catch (IOException e) {
       Report.errorAndGiveUp("Server seems to have died " + e.getMessage());
+    }finally{
+    	try {
+			server.close();
+		} catch (IOException e) {
+			// Nothing more to do
+		}
     }
+    Report.behaviour("ClientReceiver Interrupted");
   }
 }

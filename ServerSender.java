@@ -1,4 +1,3 @@
-import java.net.*;
 import java.io.*;
 
 // Continuously reads from message queue for a particular client,
@@ -16,8 +15,8 @@ public class ServerSender extends Thread {
   public void run() {
     while (true) {
 		try {
-			Message msg = clientQueue.take(); // Matches EEEEE in ServerReceiver
-			client.println(msg); // Matches FFFFF in ClientReceiver
+			Message msg = clientQueue.take(); 
+			client.println(msg); 
 		} catch (InterruptedException e) {
 			Report.behaviour("ServerSender has been interrupted.");
 		} 

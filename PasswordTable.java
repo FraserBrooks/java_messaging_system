@@ -11,9 +11,18 @@ public class PasswordTable {
 	}
 	
 	public PasswordEntry getPasswordEntry(String accountName){
+		if(accountName == null){
+			return null;
+		}
 		return passwordTable.get(accountName);
 	}
 	
+	public boolean isInTable(String accountName){
+		if(accountName == null){
+			return false;
+		}
+		return passwordTable.containsKey(accountName);
+	}
 	
 
 }

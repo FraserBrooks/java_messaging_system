@@ -22,13 +22,12 @@ class Client {
   public static void main(String[] args) {
 
     // Check correct usage:
-    if (args.length != 2) {
-      Report.errorAndGiveUp("Usage: java Client user-nickname server-hostname");
+    if (args.length != 1) {
+      Report.errorAndGiveUp("Usage: java Client server-hostname");
     }
 
-    // Initialize information:
-    String nickname = args[0];
-    String hostname = args[1];
+    // Initialise information:
+    String hostname = args[0];
 
     // Open sockets:
     PrintStream toServer = null;
@@ -47,12 +46,10 @@ class Client {
       Report.errorAndGiveUp("The server doesn't seem to be running " + e.getMessage());
     }
 
-    // Tell the server what my nickname is:
-    toServer.println(nickname); // Matches BBBBB in Server.java
-     
-    // Create two client threads of a diferent nature:
-    ClientSender sender = new ClientSender(nickname,toServer);
+    // Create two client threads of a different nature:
     ClientReceiver receiver = new ClientReceiver(fromServer);
+    ClientSender sender = new ClientSender(toServer, receiver);
+    
 
     // Run them in parallel:
     sender.start();
@@ -61,12 +58,12 @@ class Client {
     // Wait for them to end and close sockets.
     try {
       sender.join();
-      Report.behaviour("ClientSender of " + nickname + " ended.");
+      Report.behaviour("ClientSender ended.");
       toServer.close();
       fromServer.close();
       server.close();
       receiver.join();
-      Report.behaviour("ClientReceiver of " + nickname + " ended.");
+      Report.behaviour("ClientReceiver ended.");
     }
     catch (IOException e) {
       Report.errorAndGiveUp("Something wrong " + e.getMessage());
