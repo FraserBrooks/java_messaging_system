@@ -7,34 +7,30 @@ import java.io.*;
 public class ClientSender extends Thread {
 
 	private PrintStream server;
-	private ClientReceiver linkedReceiver;
+	private BufferedReader user;
 
-	ClientSender(PrintStream p, ClientReceiver c) {
-		server = p;
-		linkedReceiver = c;
-	}
+	ClientSender(PrintStream p, BufferedReader i) {
+        server = p;
+        user = i;
+    }
 
-	public void run() {
-		// So that we can use the method readLine:
-		BufferedReader user = new BufferedReader(new InputStreamReader(System.in));
+    public void run() {
 
-		try {
-			// Then loop forever sending messages to recipients via the server:
-			while (true) {
-				String message = user.readLine();
-				if (message != null) {
-					server.println(message);
-					if (message.toLowerCase().equals("quit")) {
-						linkedReceiver.interrupt();
-						break;
-					}
-				}
-			}
-		} catch (IOException e) {
-			Report.errorAndGiveUp("Communication broke in ClientSender" + e.getMessage());
-		} finally {
-			server.close();
-		}
+        try {
+            // Then loop forever sending messages to recipients via the server:
+            while (true) {
+                String message = user.readLine();
+                if (message != null && message.length() > 0) {
+                    server.println(message);
+                    if (message.toLowerCase().equals("quit")) {
+                        server.flush(); // flush the stream just to be sure
+                        return;
+                    }
+                }
+            }
+        } catch (IOException e) {
+            Report.errorAndGiveUp("Communication broke in ClientSender" + e.getMessage());
+        }
 
-	}
+    }
 }

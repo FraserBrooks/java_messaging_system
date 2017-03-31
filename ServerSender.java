@@ -18,7 +18,7 @@ public class ServerSender extends Thread {
 			Message msg = clientQueue.take(); 
 			client.println(msg); 
 		} catch (InterruptedException e) {
-			Report.behaviour("ServerSender has been interrupted.");
+			Report.behaviour("ServerSender: has been interrupted and will now close.");
 		} 
     }
   }

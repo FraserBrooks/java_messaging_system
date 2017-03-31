@@ -1,9 +1,12 @@
 import java.io.*;
+import java.net.Socket;
 
-// Gets messages from client and puts them in a queue, for another
+// Gets messages and commands from client and puts them in a queue, for another
 // thread to forward to the appropriate client.
 
 public class ServerReceiver extends Thread {
+    
+    private Socket clientSocket;
 	private String myClientsName;
 	private BufferedReader myClient;
 	private PrintStream toClient;
@@ -17,7 +20,8 @@ public class ServerReceiver extends Thread {
 			+ "     logout - log out of your account \n"
 			+ "     quit - exit from the application \n\n";
 
-	public ServerReceiver(String n, BufferedReader c, PrintStream p, ClientTable t, PasswordTable pt, ServerSender s) {
+	public ServerReceiver(String n, BufferedReader c, PrintStream p, ClientTable t, PasswordTable pt, ServerSender s, Socket so) {
+	    clientSocket = so;
 		myClientsName = n;
 		myClient = c;
 		toClient = p;
@@ -26,56 +30,70 @@ public class ServerReceiver extends Thread {
 		linkedSender = s;
 	}
 
-	public void run() {
-		try {
-			while (true) {
-				toClient.println(commands);
-				String firstInput = Server.getInput(Server.getInput(myClient.readLine()));
-				switch (firstInput.toLowerCase()) {
-				case "message":
-					toClient.println("Recipient: ");
-					String recipient = Server.getInput(myClient.readLine());
-					MessageQueue recipientsQueue = clientTable.getQueue(recipient);
+    public void run() {
+        try {
+            while (true) {
+                toClient.println(commands);
+                String firstInput = Server.getInput(myClient.readLine());
+                switch (firstInput.toLowerCase()) {
+                case "message":
+                    createAndSendMessage();
+                    break;
+                case "people":
+                    toClient.println(clientTable);
+                    break;
+                case "logout":
+                    clientTable.remove(myClientsName);
+                    linkedSender.interrupt();
+                    Report.behaviour("ServerReceiver: Client " + myClientsName + " has logged out. ");
+                    (new ServerAuthenticator(myClient, toClient, clientTable, passwordTable, clientSocket)).start();
+                    return;
+                default:
+                    toClient.println("Unrecognised Input. Try Again.\n");
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            Report.error("ServerReceiver: Lost connection with " + myClientsName + " in ServerReceiver. Message:::  "   + e.getMessage());
+        } catch (ClientHasQuitException e) {
+            Report.behaviour("ServerReceiver: Client" + myClientsName + " has sent the 'quit' command.");
+        }
 
-					toClient.println("Message: ");
-					String text = Server.getInput(myClient.readLine());
-					Message msg = new Message(myClientsName, text);
-					if (recipientsQueue != null) {
-						recipientsQueue.offer(msg);
-					} else {
-						toClient.println("Error: User " + recipient + " not found.\n");
-					}
-					break;
-				case "people":
-					toClient.println(clientTable);
-					break;
-				case "logout":
-					clientTable.remove(myClientsName);
-					linkedSender.interrupt();
-					(new ServerAuthenticator(myClient, toClient, clientTable, passwordTable)).start();
-					return;
-				default:
-					toClient.println("Unrecognised Input. Try Again.\n");
-					break;
-				}
-			}
-		} catch (IOException e) {
-			Report.error("Something went wrong with the client " + myClientsName + " " + e.getMessage());
-		} catch (ClientHasQuitException e) {
-			// Client has decided to quit. Close streams and exit.
-			Report.behaviour("Client" + myClientsName + " quiting server.");
-			toClient.println("Application exiting......");
-		}
+        // Attempt to close socket and streams. Do nothing on fail as socket is
+        // already closed or will eventually be closed by system
+        // Note: not using finally block as we don't want to close
+        // streams on a successful log out
+        clientTable.remove(myClientsName);
+        try {
+            myClient.close();
+        } catch (IOException e) {
+            // Nothing to do
+        }
+        toClient.close();
+        linkedSender.interrupt();
+        try {
+            clientSocket.close();
+        } catch (IOException e) {
+            // Nothing to do
+        }
 
-		clientTable.remove(myClientsName);
-		try {
-			myClient.close();
-		} catch (IOException e) {
-			// Nothing to do
-		}
-		toClient.close();
-		Report.behaviour("ServerReceiver of " + myClientsName + " is interrupting ServerSender & ending.");
-		linkedSender.interrupt();
-	}
+        // exit thread
+    }
+
+    private void createAndSendMessage() throws ClientHasQuitException, IOException {
+        toClient.println("Recipient: ");
+        String recipient = Server.getInput(myClient.readLine());
+        MessageQueue recipientsQueue = clientTable.getQueue(recipient);
+
+        toClient.println("Message: ");
+        String text = Server.getInput(myClient.readLine());
+        Message msg = new Message(myClientsName, text);
+        if (recipientsQueue != null) {
+        	recipientsQueue.offer(msg);
+        } else {
+            Report.behaviour("Could not find requested user: " + recipient);
+        	toClient.println("Error: User " + recipient + " not found.\n");
+        }
+    }
 
 }

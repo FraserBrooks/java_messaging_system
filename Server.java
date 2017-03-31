@@ -10,16 +10,15 @@ import java.io.*;
 
 public class Server {
 	
-	public static final int min_password_length = 4;
-	public static final int min_username_length = 4;
+	public static final int MIN_PASSWORD_LENGTH = 4;
+	public static final int MIN_USERNAME_LENGTH = 4;
 
 	public static String getInput(String input) throws ClientHasQuitException {
 		
-		String savedInput = input;
 		if (input.toLowerCase().equals("quit")) {
 			throw new ClientHasQuitException("Client has entered 'quit'");
 		}
-		return savedInput;
+		return input;
 	}
 
 	public static void main(String[] args) {
@@ -49,7 +48,7 @@ public class Server {
 
 				Report.behaviour("Someone has connected");
 
-				(new ServerAuthenticator(fromClient, toClient, clientTable, passwordTable)).start();
+				(new ServerAuthenticator(fromClient, toClient, clientTable, passwordTable, socket)).start();
 
 			}
 		} catch (IOException e) {

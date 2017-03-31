@@ -1,4 +1,7 @@
 
+// Each user has a passwordEntry stored in this table
+// Closing the server will lose all passwords currently
+
 import java.util.concurrent.*;
 
 public class PasswordTable {
