@@ -7,19 +7,19 @@ import java.io.*;
 public class ClientSender extends Thread {
 
 	private PrintStream server;
-	private BufferedReader user;
 
-	ClientSender(PrintStream p, BufferedReader i) {
+	ClientSender(PrintStream p) {
         server = p;
-        user = i;
     }
 
     public void run() {
-
+        BufferedReader user = new BufferedReader(new InputStreamReader(System.in));
         try {
             // Then loop forever sending messages to recipients via the server:
-            while (true) {
+            while (!Thread.interrupted()) {
+
                 String message = user.readLine();
+                
                 if (message != null && message.length() > 0) {
                     server.println(message);
                     if (message.toLowerCase().equals("quit")) {
@@ -29,7 +29,7 @@ public class ClientSender extends Thread {
                 }
             }
         } catch (IOException e) {
-            Report.errorAndGiveUp("Communication broke in ClientSender" + e.getMessage());
+            Report.error("Client sender: Communication Broke: " + e.getMessage());
         }
 
     }

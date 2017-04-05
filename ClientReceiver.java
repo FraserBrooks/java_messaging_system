@@ -7,13 +7,12 @@ import java.net.*;
 public class ClientReceiver extends Thread {
 
     private BufferedReader server;
-    private BufferedReader userInputStream;
-    // Need the reference to the user input stream so that we can close it if
-    // server dies as the client sender doesn't throw an IOException
+    private ClientSender sender;
 
-    ClientReceiver(BufferedReader s, BufferedReader i) {
+
+    ClientReceiver(BufferedReader s, ClientSender se) {
         server = s;
-        userInputStream = i;
+        sender = se;
     }
 
     public void run() {
@@ -32,13 +31,11 @@ public class ClientReceiver extends Thread {
             }
         } catch (SocketException e) {
             Report.error("ClientReceiver:: SocketException thrown. Message::: " + e.getMessage());
+            System.out.println("Press enter to exit...");
         } catch (IOException e) {
             Report.errorAndGiveUp("ClientReceiver: IOException thrown.. Message:" + e.getMessage());
         }
-        try {
-            userInputStream.close();
-        } catch (IOException e) {
-            // Nothing to do
-        }
+        //Interrupt Sender
+        sender.interrupt();
     }
 }

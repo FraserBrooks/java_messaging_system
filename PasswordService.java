@@ -1,5 +1,5 @@
 
-// Class for handling all encryption and authentication of passwords
+// Class for handling all encryption and authentication of passwords	
 // code adapted/taken from https://www.javacodegeeks.com/2012/05/secure-password-storage-donts-dos-and.html
 
 import java.security.NoSuchAlgorithmException;	

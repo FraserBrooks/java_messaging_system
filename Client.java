@@ -40,13 +40,9 @@ class Client {
       Report.errorAndGiveUp("Client: The server doesn't seem to be running " + e.getMessage());
     }
     
-    //Create inputStream here rather than in ClientSender so the ClientReceiver can 
-    //close it if an IOException is thrown. (The printStream in the sender never throws an IOException)
-    BufferedReader user = new BufferedReader(new InputStreamReader(System.in));
-
     // Create two client threads of a different nature:
-    ClientReceiver receiver = new ClientReceiver(fromServer, user);
-    ClientSender sender = new ClientSender(toServer, user);
+    ClientSender sender = new ClientSender(toServer);
+    ClientReceiver receiver = new ClientReceiver(fromServer, sender);
     
 
     // Run them in parallel:
@@ -64,11 +60,12 @@ class Client {
             toServer.close();
             
             
-            // Sleep for 3 seconds before closing the incoming stream to give time
-            // for the server to close it from it's end (thus avoiding a IOException)
-            Thread.sleep(3000);
+            // Sleep for 2.5 seconds before closing the incoming stream to give the server time to close it gracefully
+            Thread.sleep(2500);
             try {
-                fromServer.close();
+                fromServer.close(); 
+                // This will end the ClientReciever by triggering an IOException
+                // If server has already closed stream then this simply does nothing
             } catch (IOException e) {
                 Report.error("Could not close fromServer stream: " + e.getMessage());
             }

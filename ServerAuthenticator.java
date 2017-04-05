@@ -43,7 +43,7 @@ public class ServerAuthenticator extends Thread{
                     if (user != null) {
                         Report.behaviour("Server Authenticator: " + user + " has logged on.");
                         exitWith(user);
-                        return;
+                        return; // End of Thread
                     }
                     break;
                 case "register":
@@ -51,7 +51,7 @@ public class ServerAuthenticator extends Thread{
                     if (user != null) {
                         Report.behaviour("Server Authenticator: " + user + " has registered.");
                         exitWith(user);
-                        return;
+                        return; // End of Thread
                     }
                     break;
                 default:
@@ -87,7 +87,7 @@ public class ServerAuthenticator extends Thread{
             // Nothing to do
         }
 
-        // exit thread
+        // End of Thread
     }
 
     private String attemptLogin()
@@ -160,14 +160,14 @@ public class ServerAuthenticator extends Thread{
     private void exitWith(String user) {
         String newUser = user;
         clientTable.add(newUser);
-
+        
+         // We create and start a new thread to send to the client:
         ServerSender serverSend = new ServerSender(clientTable.getQueue(newUser), toClient);
         serverSend.start();
 
         // We create and start a new thread to read from the client:
-        (new ServerReceiver(newUser, fromClient, toClient, clientTable, passwordTable, serverSend, clientSocket))
-                .start();
-
+        (new ServerReceiver(newUser, fromClient, toClient, clientTable, passwordTable, serverSend, clientSocket)).start();
+        
     }
 
 }
