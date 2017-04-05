@@ -22,7 +22,7 @@ Once client is started a connection is made to the server and the client can att
 While logged in a client can request a list of all active users with the **people** command. Message a specific user with the **message** command or log out with the **logout** command.
 
 Upon sending the **message** command the user will be prompted for the recipient and then for the message. If the user exists and is active the message will be sent in the form:
-	>	`From sender: message`
+>	`From sender: message`
 
 The user accounts are protected by encrypted passwords. The passwords are encrypted with the PBKDF2 *(Password Based Key Derivation Function)* algorithm which uses a hashing algorithm *(in this case SHA-1)* and applies the hashing function to the password with a salt many times over to produce a stronger encryption. This process is known as key-stretching. Using a salt may be overkill in this simple messaging exercise but it's a standard practice in real applications.
 
