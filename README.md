@@ -1,81 +1,47 @@
-# Simple messaging system
+#Simple Message System
 
-  * Based on the client-server architecture with server threads and
-    socket communication.
+  * Based on the client-server architecture with server threads and socket communication.
 
-# Solution
+## Solution
 
   * [communication-and-concurrency/6-blocking-queue/messaging/]
     (https://git.cs.bham.ac.uk/mhe/SWW/tree/master/communication-and-concurrency/6-blocking-queue/messaging/)
 
-# Specification
+## Specification
 
-  * Implement a simple messaging system, based on the client-server
-    architecture, using threads to serve the clients.
+  * Implement a simple messaging system, based on the client-server architecture, using threads to serve the clients.
 
   * Races and deadlocks should be avoided.
 
-The server should be run as 
+>The server should be run as  `$ java Server`
 
-  $ java Server
+>The clients should be run as  `$ java server-address`
 
-The clients should be run as 
+Once client is started a connection is made to the server and the client can attempt to log in with the **login** command, attempt to register as a new user with the **register** command or quit at any time by sending the **quit** command. Input is sent to the server one line at a time.
 
-  $ java user-name server-address
+While logged in a client can request a list of all active users with the **people** command. Message a specific user with the **message** command or log out with the **logout** command.
 
-If there already is a user with this nickname, in this simpled minded
-design, the other user becomes innaccessible.
+Upon sending the **message** command the user will be prompted for the recipient and then for the message. If the user exists and is active the message will be sent in the form:
+	>	`From sender: message`
 
-Once my client is running, I can send a message to John by writing
-"John" and "Hello" in separate line. So the first line is the adressee
-and the second line is the message. That's all we can do, again and
-again, in this simpled minded design. There is no provision for the
-client to end.
+The user accounts are protected by encrypted passwords. The passwords are encrypted with the PBKDF2 *(Password Based Key Derivation Function)* algorithm which uses a hashing algorithm *(in this case SHA-1)* and applies the hashing function to the password with a salt many times over to produce a stronger encryption. This process is known as key-stretching. Using a salt may be overkill in this simple messaging exercise but it's a standard practice in real applications.
 
-# Proposed solution
-
-  * There are a variety of ways of approaching this. I will take the
-    opportunity to teach Maps and BlockingQueues and assertions:
-
-  * [Map] (https://docs.oracle.com/javase/tutorial/collections/interfaces/map.html)
-  * [ConcurrentHashMap] (https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ConcurrentHashMap.html)
-  * [ConcurrentMap] (https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ConcurrentMap.html)
-  * [BlockingQueue] (https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/BlockingQueue.html)
 
 ## Solution outline
+  * We have two threads in the client for sending and receiving input.
+  * For each client the server will create a single authentication thread that handles the login/register process. Once a client has logged in the server will create two threads for sending and receiving input.
 
-  * We have two threads for each client.
-
-  * We have 2*n threads in a server attending n clients.
-
-  * Each thread, in the client or server, does either output or input,
-    but not both.
+  * Once a client has sent the **logout** command the two threads on the server handling that particular client will pass the client to a new authentication thread and then close gracefully.
 
   * In the server, we use blocking queues to communicate between threads.
 
-  * We use a map to keep a table associating queues to clients.
+  * We use two maps to keep two tables for client names and their queues/passwords
 
   * This is a simplified picture:
 
 
-```
- user types  +--------------+     socket    +----------------+  queue for suitable user
- --------->  | ClientSender | ------------> | ServerReceiver | ------------------------>
-             | thread       |               | thread         |  (determine using table)
-             +--------------+               +----------------+
-                                                           
-                                                           
-                                                           
-                                                           
-                                                           
- user reads  +----------------+    socket   +--------------+  my user's queue
- <---------  | ClientReceiver | <---------- | ServerSender | <-----------------
-             | thread         |             | thread       |
-             +----------------+             +--------------+ 
-```
+![alt text](../picture.jpg "Application Diagram")
  
-
-  * But reality is more complicated.
 
   * There is, in the server, one queue for each client.
   * ServerReceiver directs the message to the appropriate queue.
@@ -98,13 +64,12 @@ client to end.
 
 ## MessageQueue.java
 
-   * Used by the server.
-   * A blocking message queue, with offer() and take() methods.
+* Used by the server.
+* A blocking message queue, with offer() and take() methods.
    * offer() adds a message to the queue.
    * take() waits until a message is available in the queue, and removes and returns it.
 
 ## ClientTable.java
-
    * Used by the server.
    * It associates a message queue to each client name.
    * Implemented with Map.
@@ -112,9 +77,8 @@ client to end.
 
 ## Client.java
 
-   * Reads user name and server address from command line.
-   * Opens a socket for communication with the server.
-   * Sends the user name to the server.
+   * Reads server address from command line.
+   * Opens a socket and creates streams for communication with the server.
    * Starts two threads ClientSender and ClientReceiver.
    * Waits for them to end.
    * Then it itself ends.
@@ -122,37 +86,63 @@ client to end.
 ## ClientSender.java
 
    * Loops forever doing the following.
-   * Reads a recipient name from the user.
-   * Reads a message from the user.
-   * Sends them both to the server.
+   * Reads an input from the user.
+   * Sends it to the server if it is non-empty string.
+   * If input is the **quit** command then exit.
 
 ## ClientReceiver.java
 
-   * Loops forever doing the following.
-   * Reads a string from the server.
-   * Prints it for the user to see.
+* Loops forever doing the following.
+* Reads a string from the server.
+* Prints it for the user to see.
+* If inputStream returns null then end thread
+  * Happens when the Server closes stream after **quit**
+* If Exception is thrown then interrupt ClientSender
 
 ## Server.java
 
    * Creates server socket.
-   * Creates a client table as explained above.
+   * Creates a client table and password table
    * Loops forever doing the following.
    * Waits for connection from the socket.
-   * Reads the client name.
-   * Updates the table with the client as the key and a new queue for it as the value.
-   * Starts two threads ServerReceiver and ServerSender.
-   
-## ServerReceiver.java
+   * Passes the connection to a new ServerAuthenticator
 
-   * Loops for ever doing the following.
-   * Reads two strings from the client. One it the recipients name. The other is the message.
-   * Puts the message in the queue for the recipient.
-   * Uses the table to find the queue.
+## ServerAuthenticator.java
+
+   * Sends welcome message to user
+   * Loops forever until client logs on or quits
+   * Reads user input and runs the appropriate method:
+   	* Log in
+   	* Register
+   	* Quit
+   * Once a client has logged on it creates a ServerReceiver
+      and Sender thread to handle the client and adds the client to the client table.
+    
+## ServerReceiver.java
+* Loops forever doing the following
+* Reads user input and runs the appropriate method:
+  * Message
+  * Log Out
+  * People
+  * Quit
+* If a client logs out then remove them from the client table  
+and create a new ServerAuthenicator
 
 ## ServerSender.java
 
-   * Loops for ever reading a message from queue for its correponding
-     client (ClientReceiver), and seding it to the client. The table
-     is not needed, because the server sender handles one specific
-     client.
+   * Loops forever reading a message from queue for its corresponding client (ClientReceiver), and sending it to the client. The table is not needed, because the server sender handles one specific client.
+     
+## ClientHasQuitException
 
+   * Exception to be thrown when a client enters the **quit** command no matter where they are in the protocol.
+
+## PasswordTable.java
+* Used by the server.
+   * It associates a PasswordEntry to each client name.
+   * Implemented with Map.
+   * More precisely with the interface ConcurrentMap using the implementation ConcurrentHashMap.
+   
+## PasswordEntry.java
+* Class for grouping salt with encrypted password
+## PasswordService.java
+* Static class that handles all encryption and authorisation 
