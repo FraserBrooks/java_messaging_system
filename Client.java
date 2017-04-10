@@ -29,7 +29,7 @@ class Client {
     Socket server = null;
 
     try {
-      server = new Socket(hostname, Port.number); 
+      server = new Socket(hostname, Config.PORTNUMBER); 
       toServer = new PrintStream(server.getOutputStream());
       fromServer = new BufferedReader(new InputStreamReader(server.getInputStream()));
     } 

@@ -12,7 +12,7 @@ public class ServerAuthenticator extends Thread{
 	private BufferedReader fromClient;
 	private PrintStream toClient;
 	private ClientTable clientTable;
-	private PasswordTable passwordTable;
+	private DatabaseAccessObject dao;
 	private String firstInput = null;
 	private String commands = 
 			"Commands:\n"
@@ -20,11 +20,11 @@ public class ServerAuthenticator extends Thread{
 			+ "     register \n"
 			+ "     quit \n\n";
 	
-	ServerAuthenticator(BufferedReader f, PrintStream to, ClientTable t, PasswordTable p, Socket so) {
+	ServerAuthenticator(BufferedReader f, PrintStream to, ClientTable t, DatabaseAccessObject  d, Socket so) {
 		fromClient = f;
 		toClient = to;
 		clientTable = t;
-		passwordTable = p;
+		dao = d;
 		clientSocket = so;
 	}
 
@@ -98,7 +98,7 @@ public class ServerAuthenticator extends Thread{
         toClient.println("Username: ");
         username = Server.getInput(fromClient.readLine());
 
-        PasswordEntry correct = passwordTable.getPasswordEntry(username);
+        PasswordEntry correct = dao.getPasswordEntry(username);
         if (correct == null) {
             toClient.println("No such username. Please try again or register.");
             return null;
@@ -126,11 +126,11 @@ public class ServerAuthenticator extends Thread{
         toClient.println("Desired username: ");
         username = Server.getInput(fromClient.readLine());
 
-        if (username.length() < Server.MIN_USERNAME_LENGTH) {
+        if (username.length() < Config.MIN_USERNAME_LENGTH) {
             toClient.println("Username too short. Please try again.");
             return null;
         }
-        if (passwordTable.isInTable(username)) {
+        if (dao.getPasswordEntry(username) != null) {
             toClient.println("Username already taken. Please try again.");
             return null;
         }
@@ -138,9 +138,9 @@ public class ServerAuthenticator extends Thread{
         toClient.println("Desired password: ");
         desiredPassword = Server.getInput(fromClient.readLine());
 
-        if (desiredPassword.length() < Server.MIN_PASSWORD_LENGTH) {
+        if (desiredPassword.length() < Config.MIN_PASSWORD_LENGTH) {
             toClient.println(
-                    "Invalid password. Password must be at least " + Server.MIN_PASSWORD_LENGTH + " chars long.");
+                    "Invalid password. Password must be at least " + Config.MIN_PASSWORD_LENGTH + " chars long.");
             return null;
         }
 
@@ -149,9 +149,13 @@ public class ServerAuthenticator extends Thread{
         if (desiredPassword.equals(Server.getInput(fromClient.readLine()))) {
             byte[] salt = PasswordService.generateSalt();
             byte[] encryptedPassword = PasswordService.encrypt(desiredPassword, salt);
-            passwordTable.add(username, new PasswordEntry(salt, encryptedPassword));
-            toClient.println("Account successfully created.");
-            return username;
+            if (dao.addNewUser(username, new PasswordEntry(salt, encryptedPassword))) {
+                toClient.println("Account successfully created.");
+                return username;
+            } else {
+                toClient.println("There was an error creating your account. Please try again...");
+                return null;
+            }
         }
         toClient.println("Passwords did not match. Please try again.");
         return null;
@@ -166,7 +170,7 @@ public class ServerAuthenticator extends Thread{
         serverSend.start();
 
         // We create and start a new thread to read from the client:
-        (new ServerReceiver(newUser, fromClient, toClient, clientTable, passwordTable, serverSend, clientSocket)).start();
+        (new ServerReceiver(newUser, fromClient, toClient, clientTable, dao, serverSend, clientSocket)).start();
         
     }
 

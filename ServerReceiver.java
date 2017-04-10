@@ -11,7 +11,7 @@ public class ServerReceiver extends Thread {
 	private BufferedReader myClient;
 	private PrintStream toClient;
 	private ClientTable clientTable;
-	private PasswordTable passwordTable;
+	private DatabaseAccessObject dao;
 	private ServerSender linkedSender;
 	private final String commands = 
 			"Commands:\n"
@@ -20,13 +20,13 @@ public class ServerReceiver extends Thread {
 			+ "     logout - log out of your account \n"
 			+ "     quit - exit from the application \n\n";
 
-	public ServerReceiver(String n, BufferedReader c, PrintStream p, ClientTable t, PasswordTable pt, ServerSender s, Socket so) {
+	public ServerReceiver(String n, BufferedReader c, PrintStream p, ClientTable t, DatabaseAccessObject d, ServerSender s, Socket so) {
 	    clientSocket = so;
 		myClientsName = n;
 		myClient = c;
 		toClient = p;
 		clientTable = t;
-		passwordTable = pt;
+		dao = d;
 		linkedSender = s;
 	}
 
@@ -46,7 +46,7 @@ public class ServerReceiver extends Thread {
                     clientTable.remove(myClientsName);
                     linkedSender.interrupt();
                     Report.behaviour("ServerReceiver: Client " + myClientsName + " has logged out. ");
-                    (new ServerAuthenticator(myClient, toClient, clientTable, passwordTable, clientSocket)).start();
+                    (new ServerAuthenticator(myClient, toClient, clientTable, dao, clientSocket)).start();
                     return;
                 default:
                     toClient.println("Unrecognised Input. Try Again.\n");

@@ -35,7 +35,9 @@ The user accounts are protected by encrypted passwords. The passwords are encryp
 
   * In the server, we use blocking queues to communicate between threads.
 
-  * We use two maps to keep two tables for client names and their queues/passwords
+  * The **ClientTable** implements a map for currently online client names and their **MessageQueues**.
+
+  * The usernames and passwords are stored in a database implemented with Java DB (Oracle's supported distribution of the       Apache Derby open source database)
 
   * This is a simplified picture:
 
@@ -136,12 +138,12 @@ and create a new ServerAuthenicator
 
    * Exception to be thrown when a client enters the **quit** command no matter where they are in the protocol.
 
-## PasswordTable.java
-* Used by the server.
-   * It associates a PasswordEntry to each client name.
-   * Implemented with Map.
-   * More precisely with the interface ConcurrentMap using the implementation ConcurrentHashMap.
-   
+## DatabaseAccessObject
+* Instantiated in the **Server** class and used by **ServerAuthenticator** and **ServerReceiver**.
+   * It loads/creates a database using Java DB (Oracle's supported distribution of the Apache Derby open source database)
+   * SQL commands are used to manipulate the database via **Statement** and **PreparedStatement** objects.
+   * Usernames are stored as VARCHAR(24) and the passwords and salt byte[] arrays are stored using the blob data type.
+
 ## PasswordEntry.java
 * Class for grouping salt with encrypted password
 ## PasswordService.java

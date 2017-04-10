@@ -1,8 +1,9 @@
 # Solution
 My approach to part 2 is as follows:
 
-The **Server** starts by initialising a **ClientTable** and attempting to listen on the given port
-but also now initialises a **PasswordTable** object before looping forever handling incoming connections.
+The **Server** starts by initialising a **ClientTable** and a **DatabaseAccessObject** which uses a local database
+to store clients usernames and passwords. Then attempts to listen on the given port looping forever 
+handling incoming connections.
 
 A new static method has also been added called getInput which simply accepts a String and returns it un-changed 
 so long as it doesn't equal 'quit'. If it does then the method throws a new **ClientHasQuitException**.
@@ -10,31 +11,35 @@ This is a new exception I defined to allow the client to quit at any point withi
 Anytime the server reads input from the client it feeds the it through the getInput like so:
 `firstInput = Server.getInput(fromClient.readLine());`
 ___
-The **PasswordTable** class is almost identical to the **ClientTable** class. It initialises a **ConcurrentHashMap**
-and uses a String *(the clients name)* as the key but instead of a clients MessageQueue object we store a 
-**PasswordEntry** object which is a simple class I have used to pair encrypted user passwords with the salts
+The **DatabaseAccessObject** class abstracts all the code for creating and interacting with the database. 
+It uses Java DB which is Oracle's supported distribution of the Apache Derby open source database. The derby.jar
+file needs to be in the classpath for the Server to run. It is included in JDK 6 onwards and usually located at:
+`%JAVA_HOME%\db\lib\derby.jar`
+The database is stored locally and SQL commands are used by the DAO to interact with it. Everything is stored
+in one table created with the sql shown below:
+```java
+       // SQL for statement. BLOB is used to store password/salt byte[] arrays
+        String createClientsTable = 
+                "CREATE TABLE CLIENTS " +
+                " ( ID INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1), " +
+                "  USERNAME VARCHAR(24) NOT NULL, " +
+                "  SALT BLOB NOT NULL, " +
+                "  PASSWORD BLOB NOT NULL)";
+```
+___
+The **PasswordEntry** object is a simple class I have used to pair encrypted user passwords with the salts
 that were used to generate them.
 ```java
-import java.util.concurrent.*;
-
-public class PasswordTable {
-	
-	private ConcurrentMap<String, PasswordEntry> passwordTable
-	= new ConcurrentHashMap<String, PasswordEntry>();
-	...
-```
-```java
 public class PasswordEntry {
-
     private byte[] salt;
     private byte[] encryptedPassword;
 ...
 ```
 The passwords used to secure the client accounts are all encrypted using many iterations of the SHA-1 algorithm
-along with a salt. All the functionality pertaining to encryption sits inside the PasswordService class.
-*Not having worked with encryption before I had to look at some code online and 
-**most of the PasswordService class is taken from**:*
-> https://www.javacodegeeks.com/2012/05/secure-password-storage-donts-dos-and.html
+along with a salt. All the functionality pertaining to encryption sits inside the **PasswordService** class.
+*Not having worked with encryption before I had to look at some code online.* 
+*For the PasswordService class I got most of the code from:*
+> **https://www.javacodegeeks.com/2012/05/secure-password-storage-donts-dos-and.html**
 
 The salt length and the iteration  count I have used are both much lower than they should be in a real world
 application but as this is simply a learning exercise I have left them relatively low.
@@ -44,9 +49,9 @@ Upon establishing a connection with the **Server** class the **Client** creates 
 The **Server**, instead of doing the same, creates a **ServerAuthenticator** thread and passes it:
 * The Socket object associated with that client.
 * The input and output data streams obtained from that socket.
-* References to the clientTable and passwordTable objects
+* References to the clientTable and DatabaseAccess objects
 
- `(new ServerAuthenticator(fromClient, toClient, clientTable, passwordTable, socket)).start();`
+ `(new ServerAuthenticator(fromClient, toClient, clientTable, dao, socket)).start();`
 
 ___
 The **ServerAuthenticator** class loops forever reading client commands from the InputStream and sending replies
@@ -56,7 +61,7 @@ down the OutputStream. It accepts the following commands:
 * **register** 
   * asks the client for their desired username and their desired password
   * asks the user to confirm their password to avoid typos in their password
-  * will not let a client take a username that already exists within the *PasswordTable*
+  * will not let a client take a username that already exists within the database
 * **quit**
   * quits from any point in the program
 
@@ -69,7 +74,7 @@ a **ServerSender** and a **ServerReceiver** thread before ending:
         ServerSender serverSend = new ServerSender(clientTable.getQueue(newUser), toClient);
         serverSend.start();
 
-        (new ServerReceiver(newUser, fromClient, toClient, clientTable, passwordTable, serverSend, clientSocket))
+        (new ServerReceiver(newUser, fromClient, toClient, clientTable, dao, serverSend, clientSocket))
                 .start();
 ```
 
@@ -81,11 +86,11 @@ of the following commands is received:
 * **people** 
   * returns a list of all logged on clients via the `toString()` method of the *ClientTable*
 * **logout**
-  * removes the client from the *ClientTable* (but leaves their username and *PasswordEntry* in the *PasswordTable*)
+  * removes the client from the *ClientTable* 
   * interrupts the *ServerSender* for this particular client which will then end gracefully
   * starts up a new *ServerAuthenticator* thread giving it all the constructor arguments it needs that were handed to  
     the receiver thread by the original *ServerAuthenticator*: (code is identical to line in the *Server* class)
-  ` (new ServerAuthenticator(myClient, toClient, clientTable, passwordTable, clientSocket)).start();`
+  ` (new ServerAuthenticator(myClient, toClient, clientTable, dao, clientSocket)).start();`
   * the *ServerReceiver* then ends gracefully
 * **quit**
   * quits from any point in the program

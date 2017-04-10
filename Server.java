@@ -1,46 +1,41 @@
-// Usage:
-//        java Server
+// Usage:	
+//
+//        derby.jar must be included in the classpath if it is not already:
+//        java -cp "%JAVA_HOME%\db\lib\derby.jar"; Server
 //
 // There is no provision for ending the server gracefully.  It will
 // end if (and only if) something exceptional happens.
 
 
-import java.net.*;
+import java.net.*;	
 import java.io.*;
 
 public class Server {
-	
-	public static final int MIN_PASSWORD_LENGTH = 4;
-	public static final int MIN_USERNAME_LENGTH = 4;
 
-	public static String getInput(String input) throws ClientHasQuitException {
-		
-		if (input.toLowerCase().equals("quit")) {
-			throw new ClientHasQuitException("Client has entered 'quit'");
-		}
-		return input;
-	}
+    public static void main(String[] args) {
+        // This table will be shared by the server threads:
+        ClientTable clientTable = new ClientTable();
+        
+        
+        // Opens the connection to the database. 
+        // Creates a new database if no database is found.
+        // Database is saved in current folder.
+        // This object is shared by all ServerAuthenticator and ServerReceiver Threads.
+        DatabaseAccessObject dao = new DatabaseAccessObject();
 
-	public static void main(String[] args) {
+        ServerSocket serverSocket = null;
 
-		// This table will be shared by the server threads:
-		ClientTable clientTable = new ClientTable();
-		PasswordTable passwordTable = new PasswordTable();
-
-		ServerSocket serverSocket = null;
-
-		try {
-			serverSocket = new ServerSocket(Port.number);
-		} catch (IOException e) {
-			Report.errorAndGiveUp("Couldn't listen on port " + Port.number);
-		}
+        try {
+            serverSocket = new ServerSocket(Config.PORTNUMBER);
+        } catch (IOException e) {
+            Report.errorAndGiveUp("Couldn't listen on port " + Config.PORTNUMBER);
+        }
 
 		try {
 			// We loop for ever, as servers usually do.
 			while (true) {
 				// Listen to the socket, accepting connections from new clients:
-				Socket socket = serverSocket.accept(); // Matches AAAAA in
-														// Client.java
+				Socket socket = serverSocket.accept();
 
 				// Create input and output streams
 				BufferedReader fromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -48,7 +43,7 @@ public class Server {
 
 				Report.behaviour("Someone has connected");
 
-				(new ServerAuthenticator(fromClient, toClient, clientTable, passwordTable, socket)).start();
+				(new ServerAuthenticator(fromClient, toClient, clientTable, dao, socket)).start();
 
 			}
 		} catch (IOException e) {
@@ -58,5 +53,16 @@ public class Server {
 			// connection. But this is beyond this simple exercise.
 		}
 	}
+
+    
+    public static String getInput(String input) throws ClientHasQuitException {
+        
+        if (input.toLowerCase().equals("quit")) {
+            throw new ClientHasQuitException("Client has entered 'quit'");
+        }
+        return input;
+    }
+    
+
 
 }

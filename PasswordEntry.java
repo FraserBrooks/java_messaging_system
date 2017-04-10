@@ -1,9 +1,12 @@
 
+
 // Pairs a salt with the encrypted password that used it
 // All passwords are stored within an instance of this class
 
 public class PasswordEntry {
 
+
+    
     private byte[] salt;
     private byte[] encryptedPassword;
 
