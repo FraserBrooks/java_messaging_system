@@ -11,6 +11,16 @@ public class DatabaseAccessObject {
 
     private Connection con = null;
     
+    private String databaseHelp = "\n\n USAGE: \n" +
+        "    derby.jar must be included in the classpath if it is not already \n" +
+        "    java db is included in the newer versions of the JDK so use: \n" +
+        "    ---> java -cp \"%JAVA_HOME%\\db\\lib\\derby.jar\"; Server  \n\n OR:  \n" +
+
+        "    If running an older JDK, the neccessary derby.jar file has been\n" +
+        "    included in the 'lib' folder in the 'src' directory so use: \n" +
+        "    ---> java -cp \"%PROJECT_ROOT%\\src\\lib\\derby.jar\"; Server \n";
+    
+    
     // SQL commands for Prepared Statements
     private String addNewUser = 
             "INSERT INTO APP.CLIENTS " +
@@ -26,7 +36,8 @@ public class DatabaseAccessObject {
            Class.forName(Config.DRIVER);
             con = DriverManager.getConnection(Config.JDBC_URL);
         } catch (ClassNotFoundException | SQLException e) {
-            Report.errorAndGiveUp("Database Access: Could not connect to database:  " + e.getMessage());
+            Report.error("Database Access: Could not connect to database:  " + e.getMessage());
+            Report.errorAndGiveUp(databaseHelp);
         }
         
         if(!clientTableExists()){

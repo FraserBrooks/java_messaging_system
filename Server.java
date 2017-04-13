@@ -1,11 +1,15 @@
-// Usage:	
+// Usage:		
 //
-//        derby.jar must be included in the classpath if it is not already:
+//        derby.jar must be included in the classpath if it is not already
+//        java db is included in the newer versions of the JDK:
 //        java -cp "%JAVA_HOME%\db\lib\derby.jar"; Server
 //
-// There is no provision for ending the server gracefully.  It will
-// end if (and only if) something exceptional happens.
-
+//        If running an older JDK, the neccessary derby.jar file
+//        has been included in the 'lib' folder in the 'src' directory:
+//        java -cp "%PROJECT_ROOT%\src\lib\derby.jar"; Server
+//
+//        There is no provision for ending the server gracefully.  It will
+//        end if (and only if) something exceptional happens.
 
 import java.net.*;	
 import java.io.*;
