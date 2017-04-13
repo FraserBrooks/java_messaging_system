@@ -1,11 +1,11 @@
-#Simple Message System
+# Simple Message System
 
   * Based on the client-server architecture with server threads and socket communication.
 
 ## Solution
 
-  * [communication-and-concurrency/6-blocking-queue/messaging/]
-    (https://git.cs.bham.ac.uk/mhe/SWW/tree/master/communication-and-concurrency/6-blocking-queue/messaging/)
+  * [messaging_system/tree/part2]
+    (https://git.cs.bham.ac.uk/flb675/messaging_system/tree/part2)
 
 ## Specification
 
@@ -15,7 +15,7 @@
 
 >The server should be run as  `$ java Server`
 
->The clients should be run as  `$ java server-address`
+>The clients should be run as  `$ java Client server-address`
 
 Once client is started a connection is made to the server and the client can attempt to log in with the **login** command, attempt to register as a new user with the **register** command or quit at any time by sending the **quit** command. Input is sent to the server one line at a time.
 

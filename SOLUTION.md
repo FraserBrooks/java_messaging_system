@@ -1,4 +1,9 @@
 # Solution
+
+  * [messaging_system/tree/part2]
+    (https://git.cs.bham.ac.uk/flb675/messaging_system/tree/part2)
+
+
 My approach to part 2 is as follows:
 
 The **Server** starts by initialising a **ClientTable** and a **DatabaseAccessObject** which uses a local database
