@@ -1,25 +1,30 @@
 import java.io.*;
 
+import networkObjects.SerializableMessage;
+
 // Continuously reads from message queue for a particular client,
 // forwarding to the client.
 
 public class ServerSender extends Thread {
   private MessageQueue clientQueue;
-  private PrintStream client;
+  private ObjectOutputStream toClient;
 
-  public ServerSender(MessageQueue q, PrintStream c) {
+  public ServerSender(MessageQueue q, ObjectOutputStream o) {
     clientQueue = q;   
-    client = c;
+    toClient = o;
   }
 
   public void run() {
     while (true) {
 		try {
-			Message msg = clientQueue.take(); 
-			client.println(msg); 
+			SerializableMessage msg = clientQueue.take(); 
+			toClient.writeObject(msg);
 		} catch (InterruptedException e) {
 			Report.behaviour("ServerSender: has been interrupted and will now close.");
-		} 
+		} catch (IOException e) {
+            Report.error("ServerSender: IOException : " + e.getMessage());
+            e.printStackTrace();
+        } 
     }
   }
 }

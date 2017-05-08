@@ -17,6 +17,7 @@ import java.io.*;
 public class Server {
 
     public static void main(String[] args) {
+        
         // This table will be shared by the server threads:
         ClientTable clientTable = new ClientTable();
         
@@ -27,45 +28,50 @@ public class Server {
         // This object is shared by all ServerAuthenticator and ServerReceiver Threads.
         DatabaseAccessObject dao = new DatabaseAccessObject();
 
-        ServerSocket serverSocket = null;
+        ServerInstance serverInstance = new ServerInstance(clientTable, dao);
+        
+        
 
+        ServerSocket serverSocket = null;
+        
         try {
             serverSocket = new ServerSocket(Config.PORTNUMBER);
         } catch (IOException e) {
             Report.errorAndGiveUp("Couldn't listen on port " + Config.PORTNUMBER);
         }
+        
+        while (true) {
+            try {
+                // We loop for ever, as servers usually do.
+                while (true) {
+                    // Listen to the socket, accepting connections from new
+                    // clients:
+                    Socket socket = serverSocket.accept();
 
-		try {
-			// We loop for ever, as servers usually do.
-			while (true) {
-				// Listen to the socket, accepting connections from new clients:
-				Socket socket = serverSocket.accept();
+                    // Create input and output streams
+                    ObjectOutputStream toClient = new ObjectOutputStream(socket.getOutputStream());
+                    ObjectInputStream fromClient = new ObjectInputStream(socket.getInputStream());
 
-				// Create input and output streams
-				BufferedReader fromClient = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-				PrintStream toClient = new PrintStream(socket.getOutputStream());
+                    Report.behaviour("Someone has connected");
 
-				Report.behaviour("Someone has connected");
+                    (new ServerAuthenticator(fromClient, toClient, serverInstance, socket)).start();
 
-				(new ServerAuthenticator(fromClient, toClient, clientTable, dao, socket)).start();
+                }
+            } catch (IOException e) {
+                Report.error("IO error " + e.getMessage());
 
-			}
-		} catch (IOException e) {
-			// Lazy approach:
-			Report.error("IO error " + e.getMessage());
-			// A more sophisticated approach could try to establish a new
-			// connection. But this is beyond this simple exercise.
-		}
+            } finally {
+                try {
+                    serverSocket.close();
+                } catch (IOException e) {
+                    // Nothing to do
+                }
+            }
+        }
+        
+		
 	}
 
-    
-    public static String getInput(String input) throws ClientHasQuitException {
-        
-        if (input.toLowerCase().equals("quit")) {
-            throw new ClientHasQuitException("Client has entered 'quit'");
-        }
-        return input;
-    }
     
 
 
