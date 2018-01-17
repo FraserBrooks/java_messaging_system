@@ -17,8 +17,9 @@
 
 ## Screenshots:
 
-![!picture not found!](./documentationImages/finalGui.jpg "Screenshot")
-![!picture not found!](./documentationImages/finalGui2.jpg "Screenshot")
+![picture not found!](./documentationImages/finalGui.jpg "Screenshot")
+
+![picture not found!](./documentationImages/finalGui2.jpg "Screenshot")
 
 ## Solution
 
