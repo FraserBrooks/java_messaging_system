@@ -4,8 +4,8 @@
 
 ## Solution
 
-  * [messaging_system/tree/part2]
-    (https://git.cs.bham.ac.uk/flb675/messaging_system/tree/part2)
+  * [messaging_system/solution]
+    (java_messaging_system/SOLUTION.md )
 
 ## Specification
 
@@ -42,7 +42,7 @@ The user accounts are protected by encrypted passwords. The passwords are encryp
   * This is a simplified picture:
 
 
-![alt text](../picture.jpg "Application Diagram")
+![alt text](./picture.jpg "Application Diagram")
  
 
   * There is, in the server, one queue for each client.
