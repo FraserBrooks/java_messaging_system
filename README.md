@@ -4,7 +4,7 @@
 
 ## Solution
 
-*[messaging_system/solution](java_messaging_system/SOLUTION.md )
+[messaging_system/solution](./SOLUTION.md )
 
 ## Specification
 
