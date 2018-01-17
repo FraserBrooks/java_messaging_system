@@ -1,7 +1,6 @@
 # Solution
 
-  * [messaging_system/tree/part2]
-    (https://git.cs.bham.ac.uk/flb675/messaging_system/tree/part2)
+[messaging_system/tree/part2](./README.md)
 
 
 My approach to part 2 is as follows:
