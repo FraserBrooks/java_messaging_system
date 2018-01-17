@@ -12,5 +12,20 @@ public class Config {
   public static final String DRIVER = "org.apache.derby.jdbc.EmbeddedDriver";
   public static final String JDBC_URL = "jdbc:derby:mesagedb;create=true";
   
+  //String variable to add unique buffer between two values from users
+  // to guarantee uniqeness ( '!' is not allowed in usernames or group names)
+  public static final String uniqueBuffer = "!!!!";
+  
+  public static String getCombinedID(String user1, String user2){
+      String id;
+      int val = user1.compareTo(user2);
+      
+      if(val < 0){
+          id = user1 + uniqueBuffer  + user2;
+      }else{
+          id = user2 + uniqueBuffer + user1;
+      }
+      return id;
+  }
 
 }

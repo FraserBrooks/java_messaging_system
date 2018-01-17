@@ -1,4 +1,4 @@
-// Usage:		
+// Usage:			  
 //        java Client server-hostname
 //
 // After initialising and opening appropriate sockets, we start two
@@ -8,8 +8,11 @@
 // 
 
 
-import java.io.*;
+import java.io.*;	
 import java.net.*;
+
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 
 class Client {
 
@@ -22,7 +25,23 @@ class Client {
 
     // Initialise information:
     String hostname = args[0];
-
+    
+    try {
+        // Set System L&F
+        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+    } catch (Exception e) {
+        // Do nothing and stick to default swing look and feel
+    }
+    
+    
+    SwingUtilities.invokeLater(new Runnable() {
+        @Override
+        public void run() {
+            new ClientGUI(hostname); // Let the constructor do the job
+        }
+    });
+    
+    /*
     // Initialise sockets and streams
     PrintStream toServer = null;
     BufferedReader fromServer = null;
@@ -49,6 +68,13 @@ class Client {
     sender.start();
     receiver.start();
     
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new ClientGUI(hostname); // Let the constructor do the job
+            }
+        });
+
         // Wait for them to end and close sockets.
         try {
             sender.join();
@@ -85,5 +111,7 @@ class Client {
             Report.errorAndGiveUp("Unexpected interruption " + e.getMessage());
         }
         Report.behaviour("Client ended gracefully.");
+    }
+    */
     }
 }

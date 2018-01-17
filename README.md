@@ -2,148 +2,269 @@
 
   * Based on the client-server architecture with server threads and socket communication.
 
+
+
+
+
+> **Known Issues Needing to be Fixed:**
+> ---Admins can currently remove the group owner which is problematic.
+> ---Owners have no way of handing over ownership of a group.
+> ---Usernames and Group names are not unique which could lead to some problems.
+> ---Users can currently add themself as a friend which is not the intended behaviour.
+> ---A user can add anyone they want if they simply send a friend request twice. A 
+>    better system for handling friend requests is required on the server side.
+> ---Error message popping up in places it shouldn't in the gui.
+
+## Screenshots:
+
+![!picture not found!](./documentationImages/finalGui.jpg "Screenshot")
+![!picture not found!](./documentationImages/finalGui2.jpg "Screenshot")
+
 ## Solution
 
-[messaging_system/solution](./SOLUTION.md )
-
-## Specification
-
-  * Implement a simple messaging system, based on the client-server architecture, using threads to serve the clients.
-
-  * Races and deadlocks should be avoided.
-
->The server should be run as  `$ java Server`
-
->The clients should be run as  `$ java Client server-address`
-
-Once client is started a connection is made to the server and the client can attempt to log in with the **login** command, attempt to register as a new user with the **register** command or quit at any time by sending the **quit** command. Input is sent to the server one line at a time.
-
-While logged in a client can request a list of all active users with the **people** command. Message a specific user with the **message** command or log out with the **logout** command.
-
-Upon sending the **message** command the user will be prompted for the recipient and then for the message. If the user exists and is active the message will be sent in the form:
->	`From sender: message`
-
-The user accounts are protected by encrypted passwords. The passwords are encrypted with the PBKDF2 *(Password Based Key Derivation Function)* algorithm which uses a hashing algorithm *(in this case SHA-1)* and applies the hashing function to the password with a salt many times over to produce a stronger encryption. This process is known as key-stretching. Using a salt may be overkill in this simple messaging exercise but it's a standard practice in real applications.
-
+[messaging_system/part3](./SOLUTION.md)
 
 ## Solution outline
   * We have two threads in the client for sending and receiving input.
   * For each client the server will create a single authentication thread that handles the login/register process. Once a client has logged in the server will create two threads for sending and receiving input.
 
-  * Once a client has sent the **logout** command the two threads on the server handling that particular client will pass the client to a new authentication thread and then close gracefully.
-
   * In the server, we use blocking queues to communicate between threads.
 
-  * The **ClientTable** implements a map for currently online client names and their **MessageQueues**.
+  * The **ClientTable** implements two maps for currently online client names and their **MessageQueues** and currently active conversations and their **MessageQueues**.
 
-  * The usernames and passwords are stored in a database implemented with Java DB (Oracle's supported distribution of the       Apache Derby open source database)
+  * The usernames accounts, groups, and membership status are stored in a database implemented with Java DB (Oracle's supported distribution of the Apache Derby open source database)
 
   * This is a simplified picture:
 
 
-![alt text](./picture.jpg "Application Diagram")
+![!picture not found!](./documentationImages/picture.jpg "Application Diagram")
  
 
-  * There is, in the server, one queue for each client.
-  * ServerReceiver directs the message to the appropriate queue.
-  * However, ServerSender reads from one queue for a specific client
+  * The **ServerReceiver** directs all valid messages to the **ServerInstance** object which handles it appropriately and places any
+   necessary messages or **Notification**'s in the appropriate clients **messageQueue**.
 
-## Report.java
+## `Default` package:
 
+### ActiveConversation.java
+* A class representing an active conversation on the server. 
+* Contains a **MessageQueue**, an ArrayList of connected clients, and an ID identifying the conversation. 
+* Instances of this class are stored in a hash map in the **ServerInstance** class.
+
+### Client.java
+* The main class on the Clients side.
+* Kicktarts the **ClientGUI** then ends
+
+### ClientAuthEventHandler.java
+`implements ActionListener`
+* ActionListener used for the initial log in window
+
+### ClientEventHandler.java
+`implements ActionListener`
+* ActionListener for the main gui.
+
+### ClientGUI
+`extends JFrame`
+* The main graphical user interface as outlined in the design.
+* Allows the user to read and send messages to groups or friends.
+* Allows the user to create and delete new groups.
+* Allows the user to add and remove friends.
+
+### ClientReceiver.java
+* Loops forever reading **SerializableMessage** objects from the server, 
+  reading their type, then passing them on to the appropriate method.
+
+### ClientSender.java
+* Loops forever taking messages from a **MessageQueue** of **SerializableMessage**'s
+  serializing them and sending them to the Server through the stream.
+
+### ClientTable.java
+* A class that implements a **ConcurrentHashMap** containing pairs of usernames and **MessageQueue**'s
+* Used by the **ServerInstance** class to place messages in the queue's of online clients and used by
+  the **ConversationMananger** to check that everyone in a conversation is offline before storing it in 
+  the database.
+
+### Config.java
+* Previously **Port.java**
+* Contains various configuration information used by both the Client and Sender such as:
+    * Port Number
+    * Password & Username constraints
+    * Database Driver definition and URL
+    * A method for combining two usernames into an ID using a uniqueBuffer consisting
+     of four exclamation marks. This works on the assumption that clients not be allowed
+     exlcamation marks in their user and group names.
+
+### ConnectWorker.java
+`implements Runnable`
+* A runnable object that attempts to connect to the Server 
+* When connected it creates streams, and starts the Sender and Receiver classes
+ before notifying the gui to update.
+
+### ConversationManager.java
+`extends Thread` 
+* Ran on the server to periodically check all **ActiveConversation** objects to make sure that
+ at least one of the clients connected to the conversation is still online. If no connected users are 
+ online then the conversation is removed from the ActiveConversations hash map and stored in the database
+
+### DatabaseAccessObject
+* Class that encapsulates all code pertaining to the access of the derby database.
+* Attempts to load driver and database as outlined in the **Config** class when initialized  
+* Any problem loading the database or creating the tables on first launch of the Server will
+  result in the application ending with an error message.
+
+### MessageQueue.java
+* A class that implements a **LinkedBlockingQueue** of **SerializableMessage**'s as a means of grouping 
+ conversations together
+* Contains three methods: `offer(SerializableMessage m)`, `take()`, and `copyTo(MessageQueue clientQueue)`
+
+### MessageWindow.java
+`extends JPanel`
+* A JPanel containing a single conversation on the client side. Only one **MessageWindow** is rendered at
+  a time in the central pane.
+* Each **MessageWindow** object is associated with an **ActiveConversation** object on the Server side via 
+ the conversation ID.
+* Clicking on one of the friends or groups in the main gui sets the associated **MessageWindow** as the focus
+ in the central pane. If no **MessageWindow** exists then one is created and a **StartConversation** object is
+ sent to the server.
+
+### PasswordEntry.java
+* Class for grouping salt with encrypted password
+
+### PasswordService.java
+* Static class that handles all encryption and authorisation 
+
+### Report.java
    * A simple class for reporting normal behaviour and erroneous behaviour.
-
    * Its methods are all static, and we don't create objects of this class.
 
-## Port.java
+### Server.java
+* Creates a new **ClientTable**.
+* Then attempts to create a new **DatabaseAccessObject**.
+* Creates a new **ServerInstance** object passing it the ClientTable and the DatabaseAccessObject.
+* Then loops forever listening for clients and starting a new **ServerAuthenticator** for each one.
 
-   * A class with a static variable defining the socket port, shared by the client and server.
-  
-## Message.java
+### ServerAuthenticator.java
+* Loops forever waiting for a **SerializableMessage** of type **AuthAttempt** to be received
+* If the authorisation attempt is succesful then a **ServerReceiver** and a **ServerSender**
+  are started with the client detials and the **ServerAuthenticator** ends.
 
-   * Used by the server.
-   * A message has the sender name and a text body.
+### ServerInstance.java
+* A class that handles all the current happenings on the Server side.
+* Keeps track of all friend requests in an ArrayList for **FriendRequest** objects. 
+* All interaction with the database happens in this class via the **DatabaseAccessObject**.
+* Keeps track of all active conversations via a **ConcurrentHashMap** pairing conversation IDs
+  with **ActiveConversation** objects.
+    * A conversation's id is the group name if it is a group or the value returned from the
+      `Config.getCombinedID(user1, user2)` if it is a private conversation between two friends.
 
-## MessageQueue.java
+### ServerReceiver.java
+* Loops forever accepting **SerializableMessage** objects through the stream and running the 
+  appropriate method, handing the message over to the **ServerInstance** if necessary.
+* Currently has no provision to end except for in the event of an IOException
 
-* Used by the server.
-* A blocking message queue, with offer() and take() methods.
-   * offer() adds a message to the queue.
-   * take() waits until a message is available in the queue, and removes and returns it.
+### ServerSender.java
+* Loops forever sending the **SerializableMessage** objects from the clients **MessageQueue** 
+  in the **ClientTable** to the client.
 
-## ClientTable.java
-   * Used by the server.
-   * It associates a message queue to each client name.
-   * Implemented with Map.
-   * More precisely with the interface ConcurrentMap using the implementation ConcurrentHashMap.
+___
 
-## Client.java
+## `newtworkObjects` package
+The following classes are all designed to represent a command/message sent between the server and client.
+Each one containing the necessary data for the message/command along with a `type` String indicating which 
+type of **SerializableMessage** it is.
 
-   * Reads server address from command line.
-   * Opens a socket and creates streams for communication with the server.
-   * Starts two threads ClientSender and ClientReceiver.
-   * Waits for them to end.
-   * Then it itself ends.
+### AddUserToGroup.java
+* Client -> Server
 
-## ClientSender.java
+### AuthAttempt.java
+* Client -> Server
 
-   * Loops forever doing the following.
-   * Reads an input from the user.
-   * Sends it to the server if it is non-empty string.
-   * If input is the **quit** command then exit.
+### ClientInfoObject.java
+* Server -> Client
+* Sent by the server upon logging in
+* Contains a list of **Friend** objects representing the clients friends
+* Contains a list of **Group** objects representing the clients groups
+* Contains a list of **Notification** objects representing the clients 
+  notifications since last logging in
 
-## ClientReceiver.java
+### CreateGroup.java
+* Client -> Server
 
-* Loops forever doing the following.
-* Reads a string from the server.
-* Prints it for the user to see.
-* If inputStream returns null then end thread
-  * Happens when the Server closes stream after **quit**
-* If Exception is thrown then interrupt ClientSender
+### DeleteGroup
+* Client -> Server
 
-## Server.java
+### Friend.java
+* Server -> Client (only inside **ClientInfoObject**/**ServerMessage**)
+* Class to represent a friend of a client containing the friends name
+  and profile picture if they've set one.
 
-   * Creates server socket.
-   * Creates a client table and password table
-   * Loops forever doing the following.
-   * Waits for connection from the socket.
-   * Passes the connection to a new ServerAuthenticator
+### FriendRequest.java
+* Client -> Server
 
-## ServerAuthenticator.java
+### Group.java
+* Server -> Client (only inside **ClientInfoObject**/**ServerMessage**)
+* Class to represent a group the client is in containing the group name
+  and two boolean values indicating if the client is an admin or the 
+  owner of the group.
 
-   * Sends welcome message to user
-   * Loops forever until client logs on or quits
-   * Reads user input and runs the appropriate method:
-   	* Log in
-   	* Register
-   	* Quit
-   * Once a client has logged on it creates a ServerReceiver
-      and Sender thread to handle the client and adds the client to the client table.
-    
-## ServerReceiver.java
-* Loops forever doing the following
-* Reads user input and runs the appropriate method:
-  * Message
-  * Log Out
-  * People
-  * Quit
-* If a client logs out then remove them from the client table  
-and create a new ServerAuthenicator
+### Message.java
+* Client -> Server
+* Server -> Client
+* Never sent 'as is'. Always inside other objects in this package
+* Contains a String of text representing the message and a **Date** 
+  object indicating the time the message was sent.
 
-## ServerSender.java
+### NetworkMessage.java
+* Client -> Server
+* Server -> Client
+* A message from one client to another client or group.
 
-   * Loops forever reading a message from queue for its corresponding client (ClientReceiver), and sending it to the client. The table is not needed, because the server sender handles one specific client.
-     
-## ClientHasQuitException
+### Notification.java
+* Server -> Client (sent 'as is' or inside **ClientInfoObject**)
+* A notification for a client that appears in the top drop-down 
+  part of the gui. A notification can be dismissed with a close 
+  button or clicked to be taken to the **MessageWindow** of the
+  relevant client.
 
-   * Exception to be thrown when a client enters the **quit** command no matter where they are in the protocol.
+### RemoveFriend.java
+* Client -> Server
 
-## DatabaseAccessObject
-* Instantiated in the **Server** class and used by **ServerAuthenticator** and **ServerReceiver**.
-   * It loads/creates a database using Java DB (Oracle's supported distribution of the Apache Derby open source database)
-   * SQL commands are used to manipulate the database via **Statement** and **PreparedStatement** objects.
-   * Usernames are stored as VARCHAR(24) and the passwords and salt byte[] arrays are stored using the blob data type.
+### RemoveGroup.java
+* Client -> Server
 
-## PasswordEntry.java
-* Class for grouping salt with encrypted password
-## PasswordService.java
-* Static class that handles all encryption and authorisation 
+### RemoveUserFromGroup.java
+* Client -> Server
+
+### SerializableMessage.java
+* The parent class of all objects sent through the socket
+* The first parameter of the constructor is for sub classes to define their type
+* The second parameter is for specifying the original sender of the message.
+
+### ServerMessage.java
+* Client -> Server
+* A message sent by the server in the event of an error or a new friend or group
+* If the client has a new friend or group then this will contain a **Friend** or 
+  **Group** object. The values will be null in the case of an error message.
+* A selection of booleans are used by the client to identify the exact nature of
+ the message.
+
+### StartConversation.java
+* Client -> Server
+* Used to tell the server to retrieve a conversation from the database, add it to 
+  the list of active conversations, then send the client all the found messages.
+* If the conversation is already running then the client is simply added to the 
+ **ActiveConversation** objects list of connected users and sent the messages in 
+ its **MessageQueue**.
+
+
+
+
+
+
+
+
+
+
+
+
+
+

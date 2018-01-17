@@ -1,30 +1,29 @@
 
 // First destination for incoming clients
 
-import java.io.*;
+import java.io.*;	
 import java.net.Socket;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 
+import networkObjects.AuthAttempt;
+import networkObjects.Message;
+import networkObjects.SerializableMessage;
+import networkObjects.ServerMessage;
+
 public class ServerAuthenticator extends Thread{
 	
     private Socket clientSocket;
-	private BufferedReader fromClient;
-	private PrintStream toClient;
-	private ClientTable clientTable;
-	private DatabaseAccessObject dao;
-	private String firstInput = null;
-	private String commands = 
-			"Commands:\n"
-			+ "     login \n"
-			+ "     register \n"
-			+ "     quit \n\n";
+	private ObjectInputStream fromClient;
+	private ObjectOutputStream toClient;
+	private ServerInstance serverInstance;
+	private SerializableMessage fromUser = null;
+
 	
-	ServerAuthenticator(BufferedReader f, PrintStream to, ClientTable t, DatabaseAccessObject  d, Socket so) {
+	ServerAuthenticator(ObjectInputStream f, ObjectOutputStream to, ServerInstance sr, Socket so) {
 		fromClient = f;
 		toClient = to;
-		clientTable = t;
-		dao = d;
+		serverInstance = sr;
 		clientSocket = so;
 	}
 
@@ -32,49 +31,44 @@ public class ServerAuthenticator extends Thread{
         String user = null;
 
         try {
-            toClient.println("Welcome to the messaging service. \n");
-            // Currently this Thread shouldn't ever be interrupted
             while (!Thread.interrupted()) {
-                toClient.println(commands);
-                firstInput = Server.getInput(fromClient.readLine());
-                switch (firstInput.toLowerCase()) {
-                case "login":
-                    user = attemptLogin();
+                fromUser = (SerializableMessage) fromClient.readObject();
+                switch (fromUser.type) {
+                case "AuthAttempt":
+                    user = attemptAuthorise(fromUser);
                     if (user != null) {
                         Report.behaviour("Server Authenticator: " + user + " has logged on.");
                         exitWith(user);
-                        return; // End of Thread
-                    }
-                    break;
-                case "register":
-                    user = attemptRegister();
-                    if (user != null) {
-                        Report.behaviour("Server Authenticator: " + user + " has registered.");
-                        exitWith(user);
-                        return; // End of Thread
+                        return; // Exit point of Thread on successful login
                     }
                     break;
                 default:
-                    toClient.println("Unrecognised Input. Try Again.");
+                    //send error to client
                     break;
                 }
 
             }
         } catch (IOException e) {
             Report.error("ServerAuthenticator: IOException: " + e.getMessage());
+            e.printStackTrace();
         } catch (NoSuchAlgorithmException e) {
             Report.error("ServerAuthenticator: NoSuchAlgorithmException: " + e.getMessage());
+            e.printStackTrace();
         } catch (InvalidKeySpecException e) {
             Report.error("ServerAuthenticator: InvalidKeySpecException: " + e.getMessage());
-        } catch (ClientHasQuitException e) {
-            // Client has decided to quit. Close streams and exit.
-            Report.behaviour("ServerAuthenticator: Client quiting before logging in");
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            Report.error("ServerAuthenticator: ClassNotFoundException: " + e.getMessage());
+            e.printStackTrace();
         }
-
         // Attempt to close socket and streams
         // Note: not using finally block as we don't want
         // to close streams on a successful login attempt
-        toClient.close();
+        try {
+            toClient.close();
+        } catch (IOException e1) {
+            // Nothing to do
+        }
         try {
             fromClient.close();
         } catch (IOException e) {
@@ -87,90 +81,60 @@ public class ServerAuthenticator extends Thread{
             // Nothing to do
         }
 
-        // End of Thread
+        // Exit point of Thread on failed or abandoned login
     }
 
-    private String attemptLogin()
-            throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, ClientHasQuitException {
-        String username;
-        String givenPassword;
-
-        toClient.println("Username: ");
-        username = Server.getInput(fromClient.readLine());
-
-        PasswordEntry correct = dao.getPasswordEntry(username);
-        if (correct == null) {
-            toClient.println("No such username. Please try again or register.");
-            return null;
-        }
-
-        toClient.println("Password: ");
-        givenPassword = Server.getInput(fromClient.readLine());
-
-        byte[] encryptedP = correct.getPassword();
-        byte[] salt = correct.getSalt();
-        if (!PasswordService.authenticate(givenPassword, encryptedP, salt)) {
-            toClient.println("Incorrect Password. Please try again or register.");
-            return null;
-        }
-
-        // User authorised, return name of authorised user
-        return username;
-    }
-
-    private String attemptRegister()
-            throws IOException, NoSuchAlgorithmException, InvalidKeySpecException, ClientHasQuitException {
-        String username;
-        String desiredPassword;
-
-        toClient.println("Desired username: ");
-        username = Server.getInput(fromClient.readLine());
-
-        if (username.length() < Config.MIN_USERNAME_LENGTH) {
-            toClient.println("Username too short. Please try again.");
-            return null;
-        }
-        if (dao.getPasswordEntry(username) != null) {
-            toClient.println("Username already taken. Please try again.");
-            return null;
-        }
-
-        toClient.println("Desired password: ");
-        desiredPassword = Server.getInput(fromClient.readLine());
-
-        if (desiredPassword.length() < Config.MIN_PASSWORD_LENGTH) {
-            toClient.println(
-                    "Invalid password. Password must be at least " + Config.MIN_PASSWORD_LENGTH + " chars long.");
-            return null;
-        }
-
-        toClient.println("Please confirm password: ");
-
-        if (desiredPassword.equals(Server.getInput(fromClient.readLine()))) {
-            byte[] salt = PasswordService.generateSalt();
-            byte[] encryptedPassword = PasswordService.encrypt(desiredPassword, salt);
-            if (dao.addNewUser(username, new PasswordEntry(salt, encryptedPassword))) {
-                toClient.println("Account successfully created.");
-                return username;
-            } else {
-                toClient.println("There was an error creating your account. Please try again...");
+    private String attemptAuthorise(SerializableMessage c) 
+            throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
+        
+        AuthAttempt client = (AuthAttempt) c;
+        if (client.creatingNewAccount){
+            if (serverInstance.getPasswordEntry(client.sender) != null) {
+                ServerMessage sm = new ServerMessage(new Message("Unfortunately that name is taken."), true, true, false, false, false, false, null, null);
+                toClient.writeObject(sm);
                 return null;
+            }else{
+                byte[] salt = PasswordService.generateSalt();
+                byte[] encryptedPassword = PasswordService.encrypt(client.password, salt);
+                if (serverInstance.addNewUserToDB(client.sender, new PasswordEntry(salt, encryptedPassword))) {
+                    return client.sender;
+                } else {
+                    ServerMessage sm = new ServerMessage(new Message("Unfortunately something went horribly wrong."), true, false, false, false, false, false, null, null);
+                    toClient.writeObject(sm);
+                    return null;
+                }
             }
-        }
-        toClient.println("Passwords did not match. Please try again.");
-        return null;
+        }else{
+            PasswordEntry correct = serverInstance.getPasswordEntry(client.sender);
+            if (correct == null) {
+                ServerMessage sm = new ServerMessage(new Message("Incorrect username or password."), true, false, true, false, false, false, null, null);
+                toClient.writeObject(sm);
+                return null;
+            }else{
+                byte[] salt = correct.getSalt();
+                byte[] encryptedP = correct.getPassword();
+                if (!PasswordService.authenticate(client.password, encryptedP, salt)) {
+                    ServerMessage sm = new ServerMessage(new Message("Incorrect username or password."), true, false, false, true, false, false, null, null);
+                    toClient.writeObject(sm);
+                    return null;
+                }
+                // User authorised, return name of authorised user
+                return client.sender;
+            }
+        }    
     }
+
 
     private void exitWith(String user) {
         String newUser = user;
-        clientTable.add(newUser);
-        
+        serverInstance.addClient(newUser);
+        Report.behaviour("ServerAuthenticator starting Sender and Receiver");
          // We create and start a new thread to send to the client:
-        ServerSender serverSend = new ServerSender(clientTable.getQueue(newUser), toClient);
+        ServerSender serverSend = new ServerSender(serverInstance.getClientQueue(newUser), toClient);
         serverSend.start();
 
         // We create and start a new thread to read from the client:
-        (new ServerReceiver(newUser, fromClient, toClient, clientTable, dao, serverSend, clientSocket)).start();
+        (new ServerReceiver(newUser, fromClient, toClient, serverInstance, serverSend, clientSocket)).start();
         
     }
 
